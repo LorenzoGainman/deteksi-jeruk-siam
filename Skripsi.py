@@ -56,30 +56,17 @@ is_mobile = screen_width is not None and screen_width < 768
 # --- 3. LOAD & PREPARE MODELS ---
 @st.cache_resource
 def load_and_prepare_models():
+    # HANYA MENGGUNAKAN KERAS
     keras_path = 'model_jeruk_rgb_final.keras'
-    tflite_path = 'model_jeruk_siam.tflite'
-
-    if not os.path.exists(tflite_path) and os.path.exists(keras_path):
-        try:
-            model = tf.keras.models.load_model(keras_path)
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
-            converter.optimizations = [tf.lite.Optimize.DEFAULT]
-            tflite_model = converter.convert()
-            with open(tflite_path, 'wb') as f:
-                f.write(tflite_model)
-            del model
-        except Exception as e:
-            st.error(f"Gagal konversi model: {e}")
-
+    
     detector = YOLO('yolov8n.pt')
 
-    if os.path.exists(tflite_path):
-        interpreter = tf.lite.Interpreter(model_path=tflite_path)
-        interpreter.allocate_tensors()
-        classifier = interpreter
-        model_type = "tflite"
-    else:
+    if os.path.exists(keras_path):
         classifier = tf.keras.models.load_model(keras_path)
+        model_type = "keras"
+    else:
+        st.error(f"⚠️ File {keras_path} TIDAK ditemukan di GitHub!")
+        classifier = None
         model_type = "keras"
 
     return detector, classifier, model_type
@@ -125,10 +112,6 @@ class OrangeAnalyzer(VideoTransformerBase):
         self.orange_memory = {}
         self.frame_count = 0 
         
-        if model_type == "tflite":
-            self.input_details = classifier.get_input_details()
-            self.output_details = classifier.get_output_details()
-
     def transform(self, frame):
         img = frame.to_ndarray(format="bgr24")
         self.frame_count += 1
@@ -164,25 +147,22 @@ class OrangeAnalyzer(VideoTransformerBase):
                         input_crop = cv2.cvtColor(input_crop, cv2.COLOR_BGR2RGB).astype('float32') / 255.0
                         input_crop = np.expand_dims(input_crop, axis=0)
 
-                        if self.model_type == "tflite":
-                            self.classifier.set_tensor(self.input_details[0]['index'], input_crop)
-                            self.classifier.invoke()
-                            prediction = self.classifier.get_tensor(self.output_details[0]['index'])
-                            raw_score = float(prediction[0][0])
-                        else:
+                        # HANYA LOGIKA PREDIKSI KERAS
+                        if self.classifier:
                             prediction = self.classifier.predict(input_crop, verbose=0)
                             raw_score = float(prediction[0][0])
+                            mem["scores"].append(raw_score)
 
-                        mem["scores"].append(raw_score)
+                            color = (0, 255, 0) if raw_score > 0.12 else (0, 0, 255)
+                            temp_res = "MANIS" if raw_score > 0.12 else "ASAM"
+                            progress = int((len(mem['scores'])/15)*100)
+                            label_text = f"{temp_res} ({progress}%)"
 
-                        color = (0, 255, 0) if raw_score > 0.12 else (0, 0, 255)
-                        temp_res = "MANIS" if raw_score > 0.12 else "ASAM"
-                        progress = int((len(mem['scores'])/15)*100)
-                        label_text = f"{temp_res} ({progress}%)"
-
-                        if len(mem["scores"]) >= 15:
-                            avg = sum(mem["scores"]) / len(mem["scores"])
-                            mem["decision"] = "MANIS" if avg > 0.12 else "ASAM"
+                            if len(mem["scores"]) >= 15:
+                                avg = sum(mem["scores"]) / len(mem["scores"])
+                                mem["decision"] = "MANIS" if avg > 0.12 else "ASAM"
+                        else:
+                            label_text, color = "Model Error", (255, 255, 255)
                     else:
                         label_text, color = "Mencari...", (255, 255, 255)
                 
