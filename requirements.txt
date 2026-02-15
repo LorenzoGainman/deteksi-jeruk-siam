@@ -1,7 +1,7 @@
 streamlit
-tensorflow-cpu
-numpy>=2.1.0
+tensorflow-cpu==2.17.0
+numpy==2.1.0
 opencv-python-headless
-ultralytics
+ultralytics==8.3.70
 streamlit-webrtc
 streamlit-js-eval
