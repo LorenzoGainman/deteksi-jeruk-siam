@@ -1,9 +1,7 @@
 streamlit
+tensorflow-cpu
+numpy==1.26.4
+opencv-python-headless
+ultralytics
 streamlit-webrtc
 streamlit-js-eval
-tensorflow==2.15.0
-ultralytics
-opencv-python-headless
-lap>=0.5.12
-av
-numpy==1.26.4
