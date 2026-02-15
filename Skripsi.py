@@ -116,7 +116,9 @@ class OrangeAnalyzer(VideoTransformerBase):
         img = frame.to_ndarray(format="bgr24")
         self.frame_count += 1
         
-        if self.frame_count % 3 != 0:
+        # OPTIMASI 1: Kurangi frekuensi deteksi (misal: setiap 5 frame)
+        # Model .keras jauh lebih berat dari TFLite, jadi kita beri napas ke CPU
+        if self.frame_count % 5 != 0:
             return img 
 
         current_time = time.time()
@@ -126,7 +128,7 @@ class OrangeAnalyzer(VideoTransformerBase):
         for obj_id in to_delete:
             del self.orange_memory[obj_id]
 
-        results = self.detector.track(img, persist=True, conf=0.5, classes=[47, 49], verbose=False, imgsz=320)
+        results = self.detector.track(img, persist=True, conf=0.5, classes=[47, 49], verbose=False, imgsz=160)
 
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
