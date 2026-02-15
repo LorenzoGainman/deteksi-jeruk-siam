@@ -1,7 +1,0 @@
-streamlit
-tensorflow
-numpy
-opencv-python-headless
-ultralytics
-streamlit-webrtc
-streamlit-js-eval
