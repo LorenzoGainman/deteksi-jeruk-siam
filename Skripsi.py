@@ -56,16 +56,22 @@ is_mobile = screen_width is not None and screen_width < 768
 # --- 3. LOAD & PREPARE MODELS ---
 @st.cache_resource
 def load_and_prepare_models():
-    # HANYA MENGGUNAKAN KERAS
     keras_path = 'model_jeruk_rgb_final.keras'
-    
-    detector = YOLO('yolov8n.pt')
+    yolo_weight = 'yolov8n.pt'
+
+    # Hapus file YOLO jika ukurannya terlalu kecil (tanda file corrupt/gagal download)
+    if os.path.exists(yolo_weight):
+        if os.path.getsize(yolo_weight) < 1000000: # Jika kurang dari 1MB, pasti rusak
+            os.remove(yolo_weight)
+
+    # Sistem akan otomatis mendownload ulang file yang bersih jika tidak ada
+    detector = YOLO(yolo_weight)
 
     if os.path.exists(keras_path):
         classifier = tf.keras.models.load_model(keras_path)
         model_type = "keras"
     else:
-        st.error(f"⚠️ File {keras_path} TIDAK ditemukan di GitHub!")
+        st.error(f"⚠️ File {keras_path} TIDAK ditemukan!")
         classifier = None
         model_type = "keras"
 
