@@ -1,7 +1,9 @@
 streamlit
-tensorflow-cpu==2.15.0
-ultralytics==8.1.0
+tensorflow-cpu
+ultralytics
 opencv-python-headless
 streamlit-webrtc
 streamlit-js-eval
 lapx
+torch
+torchvision
