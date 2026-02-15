@@ -1,5 +1,10 @@
 import streamlit as st
-import tensorflow as tf
+# Menggunakan tflite_runtime jika tersedia untuk menghemat RAM, 
+# jika tidak tetap menggunakan tensorflow standar
+try:
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    import tensorflow.lite as tflite
 import numpy as np
 import cv2
 import os
@@ -50,7 +55,8 @@ def load_and_prepare_models():
     detector = YOLO('yolov8n.pt') 
     
     if os.path.exists(tflite_path):
-        interpreter = tf.lite.Interpreter(model_path=tflite_path)
+        # Menggunakan tflite interpreter secara langsung (lebih ringan)
+        interpreter = tflite.Interpreter(model_path=tflite_path)
         interpreter.allocate_tensors()
         return detector, interpreter
     else:
@@ -95,8 +101,8 @@ class OrangeAnalyzer(VideoTransformerBase):
                      if current_time - data["last_seen"] > 2.0]
         for obj_id in to_delete: del self.orange_memory[obj_id]
 
-        # Deteksi & Tracking (imgsz 256 agar RAM aman)
-        results = self.detector.track(img, persist=True, conf=0.5, classes=[47, 49], verbose=False, imgsz=256)
+        # PERUBAHAN: imgsz dikecilkan ke 160 atau 224 untuk penghematan RAM ekstrem
+        results = self.detector.track(img, persist=True, conf=0.5, classes=[47, 49], verbose=False, imgsz=160)
 
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
