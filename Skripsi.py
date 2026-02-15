@@ -56,36 +56,37 @@ is_mobile = screen_width is not None and screen_width < 768
 # --- 3. LOAD & PREPARE MODELS ---
 @st.cache_resource
 def load_and_prepare_models():
-    keras_path = 'model_jeruk_rgb_final.keras'
+    # Gunakan path relatif yang langsung merujuk ke file di GitHub
     tflite_path = 'model_jeruk_siam.tflite'
+    yolo_path = 'yolov8n.pt'
 
-    if not os.path.exists(tflite_path) and os.path.exists(keras_path):
-        try:
-            model = tf.keras.models.load_model(keras_path)
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
-            converter.optimizations = [tf.lite.Optimize.DEFAULT]
-            tflite_model = converter.convert()
-            with open(tflite_path, 'wb') as f:
-                f.write(tflite_model)
-            del model
-        except Exception as e:
-            st.error(f"Gagal konversi model: {e}")
+    # 1. Load YOLO Detector (Sangat ringan karena hanya memuat weights)
+    try:
+        detector = YOLO(yolo_path)
+    except Exception as e:
+        st.error(f"Gagal memuat YOLO: {e}")
+        detector = None
 
-    detector = YOLO('yolov8n.pt')
-
+    # 2. Load TFLite Classifier (Prioritas utama untuk Streamlit Cloud)
     if os.path.exists(tflite_path):
-        interpreter = tf.lite.Interpreter(model_path=tflite_path)
-        interpreter.allocate_tensors()
-        classifier = interpreter
-        model_type = "tflite"
+        try:
+            # Menggunakan Interpreter jauh lebih hemat RAM daripada tf.keras.models.load_model
+            interpreter = tf.lite.Interpreter(model_path=tflite_path)
+            interpreter.allocate_tensors()
+            classifier = interpreter
+            model_type = "tflite"
+        except Exception as e:
+            st.error(f"Gagal menginisialisasi TFLite: {e}")
+            classifier, model_type = None, None
     else:
-        classifier = tf.keras.models.load_model(keras_path)
-        model_type = "keras"
+        # Jika .tflite tidak ada, kita beri peringatan (jangan paksa load .keras di cloud)
+        st.error("⚠️ File 'model_jeruk_siam.tflite' tidak ditemukan! Pastikan sudah di-upload ke GitHub.")
+        classifier, model_type = None, None
 
     return detector, classifier, model_type
 
+# Memanggil fungsi
 detector, classifier, model_type = load_and_prepare_models()
-
 # --- 4. UI: PANDUAN PENGGUNA ---
 st.title("🍊 Deteksi & Klasifikasi Kualitas Jeruk Siam")
 
@@ -209,4 +210,5 @@ webrtc_streamer(
         "audio": False
     },
     async_processing=True,
+
 )
