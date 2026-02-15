@@ -1,6 +1,6 @@
 streamlit
 tensorflow-cpu
-numpy<2.0.0
+numpy>=2.1.0
 opencv-python-headless
 ultralytics
 streamlit-webrtc
