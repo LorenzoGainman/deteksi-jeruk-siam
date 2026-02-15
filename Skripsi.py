@@ -56,22 +56,16 @@ is_mobile = screen_width is not None and screen_width < 768
 # --- 3. LOAD & PREPARE MODELS ---
 @st.cache_resource
 def load_and_prepare_models():
+    # HANYA MENGGUNAKAN KERAS
     keras_path = 'model_jeruk_rgb_final.keras'
-    yolo_weight = 'yolov8n.pt'
-
-    # Hapus file YOLO jika ukurannya terlalu kecil (tanda file corrupt/gagal download)
-    if os.path.exists(yolo_weight):
-        if os.path.getsize(yolo_weight) < 1000000: # Jika kurang dari 1MB, pasti rusak
-            os.remove(yolo_weight)
-
-    # Sistem akan otomatis mendownload ulang file yang bersih jika tidak ada
-    detector = YOLO(yolo_weight)
+    
+    detector = YOLO('yolov8n.pt')
 
     if os.path.exists(keras_path):
         classifier = tf.keras.models.load_model(keras_path)
         model_type = "keras"
     else:
-        st.error(f"⚠️ File {keras_path} TIDAK ditemukan!")
+        st.error(f"⚠️ File {keras_path} TIDAK ditemukan di GitHub!")
         classifier = None
         model_type = "keras"
 
@@ -122,9 +116,7 @@ class OrangeAnalyzer(VideoTransformerBase):
         img = frame.to_ndarray(format="bgr24")
         self.frame_count += 1
         
-        # OPTIMASI 1: Kurangi frekuensi deteksi (misal: setiap 5 frame)
-        # Model .keras jauh lebih berat dari TFLite, jadi kita beri napas ke CPU
-        if self.frame_count % 5 != 0:
+        if self.frame_count % 3 != 0:
             return img 
 
         current_time = time.time()
@@ -134,7 +126,7 @@ class OrangeAnalyzer(VideoTransformerBase):
         for obj_id in to_delete:
             del self.orange_memory[obj_id]
 
-        results = self.detector.track(img, persist=True, conf=0.5, classes=[47, 49], verbose=False, imgsz=160)
+        results = self.detector.track(img, persist=True, conf=0.5, classes=[47, 49], verbose=False, imgsz=320)
 
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
